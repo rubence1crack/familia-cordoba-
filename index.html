@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Familia Córdoba | Archivo Secreto NFC</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Tone.js for Sci-Fi Sound Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        heading: ['Fredoka', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        cordoba: {
+                            gold: '#fbbf24',
+                            rose: '#f43f5e',
+                            purple: '#a855f7',
+                            cyan: '#06b6d4',
+                            emerald: '#10b981',
+                            darkBg: '#0b0f19',
+                        }
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2s infinite ease-in-out',
+                        'float': 'float 4s infinite ease-in-out',
+                        'scanline': 'scanline 6s linear infinite',
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%, 100%': { boxShadow: '0 0 25px rgba(251, 191, 36, 0.4), inset 0 0 15px rgba(244, 63, 94, 0.3)' },
+                            '50%': { boxShadow: '0 0 50px rgba(244, 63, 94, 0.8), inset 0 0 30px rgba(251, 191, 36, 0.6)' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                        scanline: {
+                            '0%': { transform: 'translateY(-100%)' },
+                            '100%': { transform: 'translateY(1000%)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0b0f19;
+            background-image: 
+                radial-gradient(at 10% 10%, rgba(251, 191, 36, 0.15) 0px, transparent 40%),
+                radial-gradient(at 90% 90%, rgba(244, 63, 94, 0.15) 0px, transparent 40%),
+                radial-gradient(at 50% 50%, rgba(168, 85, 247, 0.1) 0px, transparent 60%);
+            background-attachment: fixed;
+        }
+
+        .glass-card {
+            background: rgba(18, 26, 43, 0.82);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(251, 191, 36, 0.5);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(251, 191, 36, 0.25);
+        }
+
+        .nfc-ring {
+            animation: ringExpand 2.2s infinite ease-out;
+        }
+
+        @keyframes ringExpand {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2.4); opacity: 0; }
+        }
+
+        canvas#bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        canvas#confettiCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #fbbf24;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between selection:bg-amber-400 selection:text-slate-900 relative">
+
+    <canvas id="bgCanvas"></canvas>
+    <canvas id="confettiCanvas"></canvas>
+
+    <!-- OVERLAY NFC ESCANEO -->
+    <div id="nfcOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-2xl p-4 transition-all duration-700">
+        <div class="absolute inset-0 pointer-events-none opacity-10 overflow-hidden">
+            <div class="w-full h-32 bg-gradient-to-b from-transparent via-amber-400 to-transparent animate-scanline"></div>
+        </div>
+
+        <div class="relative flex items-center justify-center mb-10 cursor-pointer" onclick="triggerNFCUnlock()">
+            <div class="absolute w-44 h-44 rounded-full border-2 border-amber-400/40 nfc-ring"></div>
+            <div class="absolute w-60 h-60 rounded-full border-2 border-rose-500/30 nfc-ring" style="animation-delay: 0.6s;"></div>
+            
+            <div class="w-36 h-36 rounded-3xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 p-1 animate-pulse-glow shadow-2xl flex items-center justify-center animate-float">
+                <div class="w-full h-full bg-slate-950 rounded-[22px] flex flex-col items-center justify-center gap-2">
+                    <i class="fa-solid fa-wifi text-5xl text-amber-400 rotate-90"></i>
+                    <span class="text-[11px] font-mono tracking-widest text-slate-400 uppercase font-bold">NFC VERIFIED</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center max-w-md px-6 z-10">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-400/10 border border-amber-400/30 rounded-full text-amber-300 text-xs font-mono font-semibold uppercase tracking-wider mb-4">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                Tarjeta NFC Detectada
+            </div>
+            
+            <h1 class="text-3xl sm:text-5xl font-black font-heading text-white mb-3 tracking-wide">
+                FAMILIA CÓRDOBA
+            </h1>
+            <p class="text-slate-400 text-sm sm:text-base mb-8 font-light leading-relaxed">
+                🚨 <strong class="text-amber-400 font-semibold">EXPEDIENTE SECRETO:</strong> Base de datos confidencial de especímenes humanos y criaturas domésticas.
+            </p>
+
+            <button onclick="triggerNFCUnlock()" class="w-full bg-gradient-to-r from-amber-400 via-rose-500 to-purple-600 hover:from-amber-300 hover:to-purple-500 text-slate-950 font-black py-4 px-8 rounded-2xl shadow-xl shadow-amber-500/25 transform active:scale-95 transition flex items-center justify-center gap-3 text-base uppercase tracking-wider">
+                <i class="fa-solid fa-lock-open text-xl"></i>
+                Desbloquear Expediente
+            </button>
+        </div>
+    </div>
+
+    <!-- HEADER PRINCIPAL -->
+    <header class="relative pt-8 pb-6 px-4 text-center max-w-7xl mx-auto w-full z-10">
+        <!-- Barra de Estado -->
+        <div class="flex flex-wrap justify-between items-center gap-4 mb-8 bg-slate-900/80 border border-slate-800 p-3 px-6 rounded-2xl backdrop-blur-md shadow-lg">
+            <div class="flex items-center gap-3">
+                <span class="flex h-3 w-3 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span class="font-mono text-xs text-slate-300 tracking-wider uppercase font-semibold">CHIP NFC CONECTADO</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="toggleAudio()" id="audioBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center gap-2 border border-slate-700">
+                    <i class="fa-solid fa-volume-xmark text-rose-400" id="audioIcon"></i>
+                    <span id="audioText">SONIDO OFF</span>
+                </button>
+                <button onclick="lockNFC()" class="px-3.5 py-1.5 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 rounded-xl text-xs font-semibold transition flex items-center gap-2 border border-amber-400/40">
+                    <i class="fa-solid fa-wifi rotate-90"></i>
+                    Volver a Escanear
+                </button>
+            </div>
+        </div>
+
+        <!-- Título -->
+        <div class="space-y-3">
+            <span class="text-xs font-mono tracking-widest text-amber-400 uppercase bg-amber-400/10 px-4 py-1.5 rounded-full border border-amber-400/20 inline-block font-bold">
+                ⚠️ ARCHIVO CLASIFICADO #CORDOBA-SECRET
+            </span>
+            <h1 class="text-4xl sm:text-7xl font-black font-heading tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-rose-400 to-purple-400">
+                Familia Córdoba
+            </h1>
+            <p class="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto font-light leading-relaxed">
+                Manual oficial de supervivencia, superpoderes sospechosos, manías y mascotas peligrosas.
+            </p>
+        </div>
+
+        <!-- Filtros y Búsqueda -->
+        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 max-w-2xl mx-auto">
+            <div class="relative w-full">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                <input type="text" id="searchInput" oninput="filterMembers()" placeholder="Buscar integrante, superpoder o debilidad..." class="w-full pl-11 pr-4 py-3 bg-slate-900/90 border border-slate-700/80 rounded-2xl focus:outline-none focus:border-amber-400 text-sm text-slate-200 placeholder-slate-500 transition shadow-inner">
+            </div>
+
+            <div class="flex gap-2 w-full sm:w-auto justify-center">
+                <button onclick="setCategory('all', this)" class="filter-btn active-filter px-4 py-3 bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition shadow-md whitespace-nowrap">
+                    Todos (10)
+                </button>
+                <button onclick="setCategory('Humanos', this)" class="filter-btn px-4 py-3 bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs font-bold rounded-xl transition border border-slate-800 whitespace-nowrap">
+                    Humanos (7)
+                </button>
+                <button onclick="setCategory('Mascotas', this)" class="filter-btn px-4 py-3 bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs font-bold rounded-xl transition border border-slate-800 whitespace-nowrap">
+                    Mascotas (3)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-grow z-10">
+        <div id="familyGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Inserted by JS -->
+        </div>
+
+        <div id="noResults" class="hidden text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl mt-6">
+            <div class="text-6xl mb-4">🕵️‍♂️</div>
+            <h3 class="text-xl font-bold font-heading text-slate-200 mb-1">Espécimen No Encontrado</h3>
+            <p class="text-slate-500 text-sm max-w-sm mx-auto">Ningún integrante de la Familia Córdoba coincide con este filtro.</p>
+        </div>
+
+        <!-- SECCIÓN DE SIMULADOR INTERACTIVO -->
+        <section class="mt-16 bg-slate-900/80 border border-amber-400/20 rounded-3xl p-6 sm:p-8 backdrop-blur-xl relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-amber-400/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="text-center max-w-xl mx-auto mb-8">
+                <span class="text-[11px] font-mono uppercase tracking-widest text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30 font-bold inline-block mb-2">⚡ SIMULADOR INTERACTIVO DE CAOS</span>
+                <h3 class="text-2xl sm:text-3xl font-black font-heading text-white">¿Qué pasa si se juntan?</h3>
+                <p class="text-slate-400 text-xs sm:text-sm mt-1">Selecciona 2 integrantes de la familia y calcula el resultado catastrófico de su combinación.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center max-w-3xl mx-auto">
+                <div>
+                    <label class="block text-xs font-mono text-slate-400 mb-1 font-bold">INTEGRANTE 1</label>
+                    <select id="simP1" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:border-amber-400 focus:outline-none">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+
+                <div class="text-center font-black text-2xl text-amber-400 font-heading">
+                    ➕
+                </div>
+
+                <div>
+                    <label class="block text-xs font-mono text-slate-400 mb-1 font-bold">INTEGRANTE 2</label>
+                    <select id="simP2" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:border-amber-400 focus:outline-none">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="text-center mt-6">
+                <button onclick="runChaosSimulation()" class="bg-gradient-to-r from-amber-400 to-rose-500 hover:from-amber-300 hover:to-rose-400 text-slate-950 font-black px-8 py-3.5 rounded-xl shadow-lg transition active:scale-95 text-sm uppercase tracking-wider">
+                    💥 Calcular Nivel de Caos
+                </button>
+            </div>
+
+            <div id="simResult" class="hidden mt-6 p-5 bg-slate-950/80 border border-slate-800 rounded-2xl text-center max-w-2xl mx-auto">
+                <p id="simTitle" class="text-lg font-black font-heading text-amber-300 mb-1"></p>
+                <p id="simDesc" class="text-slate-300 text-sm leading-relaxed"></p>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="mt-16 border-t border-slate-800/80 bg-slate-950/80 backdrop-blur-md py-8 px-4 text-center text-slate-500 text-xs z-10 relative">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center text-amber-400">
+                    <i class="fa-solid fa-microchip"></i>
+                </div>
+                <div class="text-left">
+                    <p class="font-bold text-slate-300">NFC Encrypted Web App</p>
+                    <p class="text-[11px] text-slate-500">Optimizada para GitHub Pages</p>
+                </div>
+            </div>
+
+            <p>© <span id="year">2026</span> Familia Córdoba • Todos los derechos reservadísimos.</p>
+
+            <button onclick="scrollToTop()" class="p-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-amber-400 rounded-xl border border-slate-800 transition">
+                <i class="fa-solid fa-arrow-up"></i>
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        let soundEnabled = false;
+        let synth = null;
+        let activeCategory = 'all';
+
+        function initAudio() {
+            if (!synth && window.Tone) {
+                synth = new Tone.Synth().toDestination();
+            }
+        }
+
+        function toggleAudio() {
+            soundEnabled = !soundEnabled;
+            const audioBtn = document.getElementById('audioBtn');
+            const audioIcon = document.getElementById('audioIcon');
+            const audioText = document.getElementById('audioText');
+
+            if (soundEnabled) {
+                Tone.start();
+                initAudio();
+                audioIcon.className = "fa-solid fa-volume-high text-emerald-400";
+                audioText.textContent = "SONIDO ON";
+                playBeep(600, '0.1');
+            } else {
+                audioIcon.className = "fa-solid fa-volume-xmark text-rose-400";
+                audioText.textContent = "SONIDO OFF";
+            }
+        }
+
+        function playBeep(freq = 440, duration = '0.1') {
+            if (soundEnabled && synth) {
+                try {
+                    synth.triggerAttackRelease(freq, duration);
+                } catch(e) {}
+            }
+        }
+
+        const familyCordoba = [
+            {
+                id: "papa",
+                nombre: "Papá",
+                apodo: "El Defensor del Sofá",
+                categoria: "Humanos",
+                avatar: "👨‍🦳",
+                bgGradient: "from-amber-500/15 via-orange-500/10 to-transparent",
+                borderColor: "border-amber-500/40",
+                badgeBg: "bg-amber-400/10 text-amber-300 border-amber-400/30",
+                superpoder: "Quejarse con precisión de francotirador de cualquier cosa que no le guste.",
+                debilidad: "Que le apaguen la tele mientras duerme. Resucita de inmediato gritando: '¡Oye, que la estaba viendo!'.",
+                peligro: 88,
+                peligroTexto: "RIESGO DEFENSOR DEL SOFÁ: ALTO",
+                descripcion: "Posee un perro acompañante altamente adiestrado para defender la posesión del sofá. Si te intentas sentar o tocar el mando, el perro gruñe y él se despierta milagrosamente."
+            },
+            {
+                id: "mama",
+                nombre: "Mamá",
+                apodo: "La Telefonista Satelital",
+                categoria: "Humanos",
+                avatar: "👩‍💼",
+                bgGradient: "from-rose-500/15 via-pink-500/10 to-transparent",
+                borderColor: "border-rose-500/40",
+                badgeBg: "bg-rose-400/10 text-rose-300 border-rose-400/30",
+                superpoder: "Atender muchas llamadas al mismo tiempo sin despeinarse ni perder detalle de la conversación.",
+                debilidad: "Tiene un escáner biomecánico en los ojos para saber exactamente a qué hora y cómo has vuelto a casa.",
+                peligro: 100,
+                peligroTexto: "EFICACIA DEL ESCÁNER: 100%",
+                descripcion: "Directora General y La Telefonista oficial de la casa. Capaz de dar órdenes, cocinar, atender tres llamadas y detectar si pisas la casa con los zapatos sucios a 20 metros."
+            },
+            {
+                id: "kini",
+                nombre: "Kini",
+                apodo: "El Cerebrito Antitecnológico",
+                categoria: "Humanos",
+                avatar: "👦🏻",
+                bgGradient: "from-purple-500/15 via-indigo-500/10 to-transparent",
+                borderColor: "border-purple-500/40",
+                badgeBg: "bg-purple-400/10 text-purple-300 border-purple-400/30",
+                superpoder: "En situaciones ajetreadas sabe mantener la calma de manera épica.",
+                debilidad: "Se tira unos peos tan potentes que te hace falta una máscara de gas militar para poder superarlos.",
+                peligro: 92,
+                peligroTexto: "NIVEL DE TOXICIDAD GASEOSA: CRÍTICO",
+                descripcion: "Es el cerebrito de la casa, pero la tecnología y él están totalmente peleados. Si toca un aparato electrónico hay un 50% de probabilidad de que explote o se desconfigure solo."
+            },
+            {
+                id: "adrian",
+                nombre: "Adrián",
+                apodo: "Maestro del Caos",
+                categoria: "Humanos",
+                avatar: "👦",
+                bgGradient: "from-cyan-500/15 via-blue-500/10 to-transparent",
+                borderColor: "border-cyan-500/40",
+                badgeBg: "bg-cyan-400/10 text-cyan-300 border-cyan-400/30",
+                superpoder: "Se ríe por absolutamente todo y siempre está haciendo el gracioso.",
+                debilidad: "Se junta con Kini y automáticamente son una bomba atómica de líos.",
+                peligro: 89,
+                peligroTexto: "POTENCIAL DE CAOS: DANGER",
+                descripcion: "El gracioso incombustible de la casa. Cada 5 minutos se le ocurre un invento nuevo y revolucionario. Lamentablemente, ninguno de sus inventos acaba bien jamás."
+            },
+            {
+                id: "maria",
+                nombre: "María",
+                apodo: "La Ordenada Culinaria",
+                categoria: "Humanos",
+                avatar: "👩",
+                bgGradient: "from-pink-500/15 via-fuchsia-500/10 to-transparent",
+                borderColor: "border-pink-500/40",
+                badgeBg: "bg-pink-400/10 text-pink-300 border-pink-400/30",
+                superpoder: "Sabe dónde pone cada cosa y en el orden exacto en el que va. ¡Que a nadie se le ocurra cambiárselo!",
+                debilidad: "La cocina. Cada vez que le toca hacer un plato acaba chamuscado y crujiente como el carbón.",
+                peligro: 82,
+                peligroTexto: "ALERTA DE INCENDIO EN COCINA",
+                descripcion: "Ante cualquier desgracia o problema: primero le da un ataque de risa y luego corre a hablar con mamá para buscar soluciones drásticas."
+            },
+            {
+                id: "ruben",
+                nombre: "Rubén",
+                apodo: "El Habitante de la Red",
+                categoria: "Humanos",
+                avatar: "🙋‍♂️",
+                bgGradient: "from-emerald-500/15 via-teal-500/10 to-transparent",
+                borderColor: "border-emerald-500/40",
+                badgeBg: "bg-emerald-400/10 text-emerald-300 border-emerald-400/30",
+                superpoder: "Vive en un mundo paralelo y fascinante dentro de Internet.",
+                debilidad: "Cuando se cae la red o no hay Internet, entra en cortocircuito y no sabe cómo vivir en el mundo real.",
+                peligro: 78,
+                peligroTexto: "RIESGO DE DESCONEXIÓN REAL",
+                descripcion: "Navegante interdimensional de la red. Puede pasar horas inmerso en su mundo digital. Si se corta el Wi-Fi, intenta parpadear para reiniciar la realidad."
+            },
+            {
+                id: "junior",
+                nombre: "Junior",
+                apodo: "El Niño Guerras",
+                categoria: "Humanos",
+                avatar: "🧒",
+                bgGradient: "from-yellow-500/25 via-amber-500/15 to-transparent",
+                borderColor: "border-yellow-400/60",
+                badgeBg: "bg-yellow-400/20 text-yellow-300 border-yellow-400/50",
+                superpoder: "Ganas insaciables de jugar a luchar contra cualquier ser vivo.",
+                debilidad: "Cuando ve al abuelo, le encanta abalanzarse sobre él para iniciar un combate de pressing catch.",
+                peligro: 98,
+                peligroTexto: "GUERRA IMPERDONABLE ACTIVADA",
+                descripcion: "El gladiador benjamín de la familia. Con cualquier persona que se cruce en el pasillo le gusta retarla a una pelea. Su contrincante favorito es el abuelo."
+            },
+            {
+                id: "lulu",
+                nombre: "Lulu",
+                apodo: "El Chihuahua 'Mini Cerdo'",
+                categoria: "Mascotas",
+                avatar: "🐶",
+                bgGradient: "from-orange-500/15 via-amber-500/10 to-transparent",
+                borderColor: "border-orange-500/40",
+                badgeBg: "bg-orange-400/10 text-orange-300 border-orange-400/30",
+                superpoder: "Dormir profundamente en coma y que absolutamente nadie la pueda molestar.",
+                debilidad: "El olor o la presencia de una simple loncha de jamón york.",
+                peligro: 65,
+                peligroTexto: "PESO PESADO CANINO: MÁXIMO",
+                descripcion: "Se supone que es una chihuahua, pero de todo lo que pesa y lo redondita que está parece un mini cerdo de cuatro patas. Un tanque indestructible alimentado a croquetas."
+            },
+            {
+                id: "jagger",
+                nombre: "Jagger",
+                apodo: "El Cazador de Comida Infiltrado",
+                categoria: "Mascotas",
+                avatar: "🐱",
+                bgGradient: "from-violet-500/15 via-purple-500/10 to-transparent",
+                borderColor: "border-violet-500/40",
+                badgeBg: "bg-violet-400/10 text-violet-300 border-violet-400/30",
+                superpoder: "Como te dejes comida en cualquier lugar de la casa, se la come sin dejar ni el más mínimo rastro ni prueba.",
+                debilidad: "Un solo grito de su dueña María lo pone firme al instante y sale volando del susto.",
+                peligro: 85,
+                peligroTexto: "DEPREDADOR PLATO VACÍO",
+                descripcion: "Caza cualquier tipo de bicho raro que ni siquiera sabías que existía en casa. Un felino ninja cuyo olfato detecta cualquier plato sin supervisión."
+            },
+            {
+                id: "mia",
+                nombre: "Mia",
+                apodo: "La Gata Tuerta Cómplice",
+                categoria: "Mascotas",
+                avatar: "👁️‍🗨️",
+                bgGradient: "from-teal-500/15 via-emerald-500/10 to-transparent",
+                borderColor: "border-teal-500/40",
+                badgeBg: "bg-teal-400/10 text-teal-300 border-teal-400/30",
+                superpoder: "Capacidad mística de esconderse en recovecos imposibles de la casa y ser completamente indetectable.",
+                debilidad: "Cualquier comida que huela a kilómetros la busca implacablemente y se la come.",
+                peligro: 80,
+                peligroTexto: "VISIÓN PANORÁMICA 360°",
+                descripcion: "Tiene un solo ojo, ¡pero posee más visión panorámica que todos los humanos de la casa juntos! Es la fiel pata derecha de Jagger en todas las incursiones nocturnas a la cocina."
+            }
+        ];
+
+        function renderCards(data) {
+            const grid = document.getElementById('familyGrid');
+            const noResults = document.getElementById('noResults');
+            grid.innerHTML = '';
+
+            if (data.length === 0) {
+                noResults.classList.remove('hidden');
+                return;
+            } else {
+                noResults.classList.add('hidden');
+            }
+
+            data.forEach((m) => {
+                const card = document.createElement('div');
+                card.className = `glass-card rounded-3xl p-6 relative overflow-hidden transition-all duration-300 flex flex-col justify-between border ${m.borderColor} bg-gradient-to-br ${m.bgGradient}`;
+
+                let barGradient = 'from-amber-400 to-rose-500';
+                if (m.peligro > 90) barGradient = 'from-rose-600 via-pink-600 to-purple-600';
+                if (m.categoria === 'Mascotas') barGradient = 'from-emerald-400 via-teal-400 to-cyan-500';
+
+                card.innerHTML = `
+                    <div>
+                        <!-- Avatar e Info Header -->
+                        <div class="flex items-start justify-between gap-3 mb-4">
+                            <div class="flex items-center gap-3">
+                                <button onclick="triggerAvatarEffect(event, '${m.id}')" class="w-16 h-16 rounded-2xl bg-slate-900/90 border border-slate-700/80 flex items-center justify-center text-4xl shadow-inner flex-shrink-0 active:scale-90 transition transform hover:rotate-6">
+                                    ${m.avatar}
+                                </button>
+                                <div>
+                                    <h2 class="text-2xl font-black font-heading text-white tracking-wide">${m.nombre}</h2>
+                                    <span class="text-xs font-mono text-amber-300 font-semibold block">${m.apodo}</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-mono uppercase font-black px-2.5 py-1 rounded-full border ${m.badgeBg}">
+                                ${m.categoria}
+                            </span>
+                        </div>
+
+                        <!-- Bio -->
+                        <p class="text-slate-300 text-sm mb-5 leading-relaxed bg-slate-950/50 p-4 rounded-2xl border border-white/5 font-light">
+                            "${m.descripcion}"
+                        </p>
+
+                        <!-- Stats Box -->
+                        <div class="space-y-2.5 text-xs mb-6">
+                            <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                                <span class="text-amber-400 font-extrabold block mb-0.5"><i class="fa-solid fa-bolt text-xs mr-1"></i> SUPERPODER:</span>
+                                <span class="text-slate-200">${m.superpoder}</span>
+                            </div>
+                            <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                                <span class="text-rose-400 font-extrabold block mb-0.5"><i class="fa-solid fa-skull text-xs mr-1"></i> DEBILIDAD:</span>
+                                <span class="text-slate-200">${m.debilidad}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Barómetro de Caos -->
+                    <div class="pt-3 border-t border-slate-800/80">
+                        <div class="flex justify-between items-center text-xs mb-1.5 font-mono">
+                            <span class="text-slate-400">Nivel de Caos / Peligro:</span>
+                            <span class="font-bold text-amber-300">${m.peligro}%</span>
+                        </div>
+                        <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                            <div class="h-full rounded-full bg-gradient-to-r ${barGradient} transition-all duration-1000" style="width: ${m.peligro}%"></div>
+                        </div>
+                        <span class="text-[10px] text-slate-400 font-mono block text-right mt-1.5 font-bold">${m.peligroTexto}</span>
+                    </div>
+                `;
+
+                // Efecto Tilt 3D
+                card.addEventListener('mousemove', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    const rotateX = ((y - centerY) / centerY) * -8;
+                    const rotateY = ((x - centerX) / centerX) * 8;
+                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+                });
+
+                grid.appendChild(card);
+            });
+        }
+
+        window.filterMembers = function() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = familyCordoba.filter(m => {
+                const matchesCategory = activeCategory === 'all' || m.categoria === activeCategory;
+                const matchesQuery = m.nombre.toLowerCase().includes(query) ||
+                                     m.apodo.toLowerCase().includes(query) ||
+                                     m.superpoder.toLowerCase().includes(query) ||
+                                     m.debilidad.toLowerCase().includes(query) ||
+                                     m.descripcion.toLowerCase().includes(query);
+                return matchesCategory && matchesQuery;
+            });
+            renderCards(filtered);
+            playBeep(800, '0.05');
+        };
+
+        window.setCategory = function(type, btnElement) {
+            activeCategory = type;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-amber-400', 'text-slate-950', 'active-filter');
+                btn.classList.add('bg-slate-900', 'text-slate-400');
+            });
+
+            if (btnElement) {
+                btnElement.classList.add('bg-amber-400', 'text-slate-950', 'active-filter');
+                btnElement.classList.remove('bg-slate-900', 'text-slate-400');
+            }
+
+            filterMembers();
+        };
+
+        function populateSimulatorSelects() {
+            const s1 = document.getElementById('simP1');
+            const s2 = document.getElementById('simP2');
+            s1.innerHTML = '';
+            s2.innerHTML = '';
+
+            familyCordoba.forEach((m, idx) => {
+                const opt1 = new Option(`${m.avatar} ${m.nombre}`, m.id);
+                const opt2 = new Option(`${m.avatar} ${m.nombre}`, m.id);
+                s1.add(opt1);
+                s2.add(opt2);
+            });
+
+            if (s2.options.length > 1) s2.selectedIndex = 1;
+        }
+
+        window.runChaosSimulation = function() {
+            const id1 = document.getElementById('simP1').value;
+            const id2 = document.getElementById('simP2').value;
+
+            const p1 = familyCordoba.find(m => m.id === id1);
+            const p2 = familyCordoba.find(m => m.id === id2);
+
+            const resDiv = document.getElementById('simResult');
+            const resTitle = document.getElementById('simTitle');
+            const resDesc = document.getElementById('simDesc');
+
+            if (id1 === id2) {
+                resTitle.textContent = "🌀 CLONACIÓN PROHIBIDA";
+                resDesc.textContent = `Intentar juntar a 2 ${p1.nombre} provocaría un bucle temporal donde la casa colapsa por exceso de drama o pereza.`;
+            } else if ((id1 === 'kini' && id2 === 'adrian') || (id1 === 'adrian' && id2 === 'kini')) {
+                resTitle.textContent = "💥 COMBO APOCALÍPTICO: LA BOMBA ATÓMICA";
+                resDesc.textContent = "¡ALERTA MÁXIMA! Kini y Adrián juntos activan el 'Protocolo Caos Total'. Los inventos fallidos combinados con peos químicos pueden destruir la paz del vecindario.";
+            } else if ((id1 === 'jagger' && id2 === 'maria') || (id1 === 'maria' && id2 === 'jagger')) {
+                resTitle.textContent = "⚡ CHOQUE DE AUTORIDAD Y CULINARIA";
+                resDesc.textContent = "Si Jagger intenta robar comida chamuscada de María, un solo grito de María lo enviará en órbita sónica a la velocidad de la luz.";
+            } else if ((id1 === 'junior' && id2 === 'papa') || (id1 === 'papa' && id2 === 'junior')) {
+                resTitle.textContent = "🤼 COMBATE POR EL MANDO Y EL SOFÁ";
+                resDesc.textContent = "Junior lanza un ataque de pressing catch mientras Papá intenta defender la posición del sofá. El perro de Papá actúa como árbitro imparcial.";
+            } else {
+                const combinedScore = Math.round((p1.peligro + p2.peligro) / 2);
+                resTitle.textContent = `🚨 COMBINACIÓN DE RIESGO (${combinedScore}%)`;
+                resDesc.textContent = `La mezcla entre ${p1.nombre} ("${p1.apodo}") y ${p2.nombre} ("${p2.apodo}") desencadena un 99% de posibilidades de debate familiar y 1% de acuerdo mutuo.`;
+            }
+
+            resDiv.classList.remove('hidden');
+            triggerConfetti();
+            playBeep(900, '0.2');
+        };
+
+        window.triggerNFCUnlock = function() {
+            playBeep(523.25, '0.15');
+            setTimeout(() => playBeep(659.25, '0.2'), 100);
+            setTimeout(() => playBeep(783.99, '0.25'), 200);
+
+            const overlay = document.getElementById('nfcOverlay');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 700);
+
+            triggerConfetti();
+        };
+
+        window.lockNFC = function() {
+            const overlay = document.getElementById('nfcOverlay');
+            overlay.style.display = 'flex';
+            setTimeout(() => {
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+            }, 10);
+            playBeep(440, '0.1');
+        };
+
+        window.scrollToTop = function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            playBeep(700, '0.05');
+        };
+
+        // Confetti Canvas System
+        const confettiCanvas = document.getElementById('confettiCanvas');
+        const confettiCtx = confettiCanvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+            const bgC = document.getElementById('bgCanvas');
+            bgC.width = window.innerWidth;
+            bgC.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function triggerConfetti() {
+            particles = [];
+            const colors = ['#fbbf24', '#f43f5e', '#a855f7', '#06b6d4', '#10b981'];
+            for (let i = 0; i < 80; i++) {
+                particles.push({
+                    x: window.innerWidth / 2,
+                    y: window.innerHeight / 2,
+                    vx: (Math.random() - 0.5) * 18,
+                    vy: (Math.random() - 0.5) * 18 - 4,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 1
+                });
+            }
+        }
+
+        window.triggerAvatarEffect = function(e, id) {
+            e.stopPropagation();
+            triggerConfetti();
+            playBeep(1200, '0.1');
+        };
+
+        function updateParticles() {
+            confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            particles.forEach((p, idx) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2; // Gravedad
+                p.life -= 0.015;
+
+                confettiCtx.fillStyle = p.color;
+                confettiCtx.globalAlpha = Math.max(0, p.life);
+                confettiCtx.beginPath();
+                confettiCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                confettiCtx.fill();
+
+                if (p.life <= 0) particles.splice(idx, 1);
+            });
+            requestAnimationFrame(updateParticles);
+        }
+
+        // Ambient Background Stars / Bubbles
+        function drawBgParticles() {
+            const bgC = document.getElementById('bgCanvas');
+            const ctx = bgC.getContext('2d');
+            let stars = [];
+            for (let i = 0; i < 40; i++) {
+                stars.push({
+                    x: Math.random() * bgC.width,
+                    y: Math.random() * bgC.height,
+                    r: Math.random() * 2,
+                    alpha: Math.random()
+                });
+            }
+
+            function renderStars() {
+                ctx.clearRect(0, 0, bgC.width, bgC.height);
+                ctx.fillStyle = '#ffffff';
+                stars.forEach(s => {
+                    ctx.globalAlpha = s.alpha;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    ctx.fill();
+                    s.alpha += (Math.random() - 0.5) * 0.02;
+                    if (s.alpha < 0) s.alpha = 0;
+                    if (s.alpha > 1) s.alpha = 1;
+                });
+                requestAnimationFrame(renderStars);
+            }
+            renderStars();
+        }
+
+        window.onload = () => {
+            resizeCanvas();
+            renderCards(familyCordoba);
+            populateSimulatorSelects();
+            updateParticles();
+            drawBgParticles();
+        };
+    </script>
+</body>
+</html>
